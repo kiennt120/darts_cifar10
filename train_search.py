@@ -82,7 +82,7 @@ def main():
     except:
         epoch_old = 0
         print('Training new model!')
-    print("param size = MB", count_parameters_in_MB(model))
+    print(f"param size = {count_parameters_in_MB(model)}MB")
 
     train_transform, valid_transform = _data_transforms_cifar10(args)
     train_data = dset.CIFAR10(root=args.data_dir, train=True, download=True, transform=train_transform)

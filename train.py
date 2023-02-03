@@ -99,7 +99,9 @@ def main():
         print('Training new model!')
 
     for epoch in range(epoch_old, args.epochs):
-        print(f'epoch {epoch}: lr {scheduler.get_last_lr()[0]}')
+        lr = scheduler.get_last_lr()[0]
+        print(f'epoch {epoch}: lr {lr}')
+        writer.add_scalar('learning rate', lr, epoch)
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
         # training
@@ -151,8 +153,7 @@ def train(train_queue, model, criterion, optimizer):
         top5.update(prec5.data, n)
 
         if step % args.report_freq == 0:
-            print('train %03d %e %f %f', step, objs.avg.item(), top1.avg.item(), top5.avg.item())
-
+            print(f'train {step}: loss = {objs.avg.item()}, top 1 = {top1.avg.item()}%, top 5 = {top5.avg.item()}%')
     return top1.avg, objs.avg
 
 
@@ -177,7 +178,7 @@ def infer(valid_queue, model, criterion):
             top5.update(prec5.data, n)
 
             if step % args.report_freq == 0:
-                print('valid %03d %e %f %f', step, objs.avg.item(), top1.avg.item(), top5.avg.item())
+                print(f'valid {step}: loss = {objs.avg.item()}, top 1 = {top1.avg.item()}%, top 5 = {top5.avg.item()}%')
 
         return top1.avg, objs.avg
 
