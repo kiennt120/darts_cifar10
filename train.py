@@ -10,6 +10,8 @@ from utils import _data_transforms_cifar10
 from model import NetworkCIFAR
 from torch.autograd import Variable
 import os
+from torch.utils.tensorboard import SummaryWriter
+from time import time
 
 
 parser = argparse.ArgumentParser("cifar")
@@ -39,6 +41,8 @@ model_path = os.path.join(PATH, 'checkpoint')
 args.data_dir = os.path.join(PATH, 'data')
 CIFAR_CLASSES = 10
 
+writer = SummaryWriter(os.path.join(PATH, 'runs/darts'))
+
 
 def main():
     if not torch.cuda.is_available():
@@ -54,7 +58,7 @@ def main():
     logging.info('gpu device = %d' % args.gpu)
     logging.info("args = %s", args)
 
-    genotype = eval(f'{args.arch}')
+    genotype = eval('genotypes.%s' % args.arch)
     model = NetworkCIFAR(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
     model = model.cuda()
 
@@ -93,14 +97,27 @@ def main():
         print('Training new model!')
 
     for epoch in range(epoch_old, args.epochs):
-        logging.info('epoch %d lr %e', epoch, scheduler.get_last_lr()[0])
+        print('epoch %d: lr %e', epoch, scheduler.get_last_lr()[0])
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
+        # training
+        start_train = time()
         train_acc, train_obj = train(train_queue, model, criterion, optimizer)
-        logging.info('train_acc %f', train_acc)
+        end_train = time()
+        print(f'train_acc: {train_acc.item()}%, train_time: {end_train - start_train}s')
+        writer.add_scalar('train accuracy', train_acc.item(), epoch)
+        writer.add_scalar('train loss', train_obj.item(), epoch)
+        writer.add_scalar('train time', end_train - start_train, epoch)
 
+        # valid
+        start_valid = time()
         valid_acc, valid_obj = infer(valid_queue, model, criterion)
-        logging.info('valid_acc %f', valid_acc)
+        end_valid = time()
+        print(f'valid_acc: {valid_acc.item()}%, valid_time: {end_valid - start_valid}s')
+        writer.add_scalar('valid accuracy', valid_acc.item(), epoch)
+        writer.add_scalar('valid loss', valid_obj.item(), epoch)
+        writer.add_scalar('valid time', end_valid - start_valid, epoch)
+
         scheduler.step()
         save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights.pt'))
 

@@ -1,20 +1,13 @@
 import os
 import sys
 import time
-import glob
-import numpy as np
-import torch
-import logging
 import argparse
-import torch.nn as nn
 import torch.utils
 import torch.nn.functional as F
 import torchvision.datasets as dset
 import torch.backends.cudnn as cudnn
 from time import time
-from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
-import configparser
 from model_search import Network
 from utils import *
 from utils import _data_transforms_cifar10
@@ -49,7 +42,7 @@ model_path = os.path.join(PATH, 'checkpoint')
 args.data_dir = os.path.join(PATH, 'data')
 CIFAR_CLASSES = 10
 
-writer = SummaryWriter(os.path.join(PATH, 'runs/DARTS'))
+writer = SummaryWriter(os.path.join(PATH, 'runs/darts_search'))
 
 def main():
     if not torch.cuda.is_available():
@@ -129,18 +122,18 @@ def main():
         writer.add_scalar('train accuracy', train_acc.item(), epoch)
         writer.add_scalar('train loss', train_obj.item(), epoch)
         writer.add_scalar('train time', end_train - start_train, epoch)
-        scheduler.step()
 
         # validation
         start_valid = time()
         valid_acc, valid_obj = infer(valid_queue, model, criterion)
+        scheduler.step()
         end_valid = time()
 
         print(f'valid_acc: {valid_acc.item()}%, valid_time: {end_valid - start_valid}s')
         writer.add_scalar('valid accuracy', valid_acc.item(), epoch)
         writer.add_scalar('valid loss', valid_obj.item(), epoch)
         writer.add_scalar('valid time', end_valid - start_valid, epoch)
-        save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights.pt'))
+        save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights_search.pt'))
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
