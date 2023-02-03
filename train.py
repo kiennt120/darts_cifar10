@@ -33,7 +33,7 @@ parser.add_argument('--cutout_length', type=int, default=16, help='cutout length
 parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path probability')
 parser.add_argument('--save', type=str, default='EXP', help='experiment name')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
-parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
+parser.add_argument('--arch', type=genotypes.Genotype, default=genotypes.DARTS, help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
 
@@ -58,13 +58,13 @@ def main():
     torch.manual_seed(args.seed)
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
-    print('gpu device = %d' % args.gpu)
+    print('gpu device =', args.gpu)
 
-    genotype = eval('genotypes.%s' % args.arch)
+    genotype = args.arch
     model = NetworkCIFAR(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
     model = model.cuda()
 
-    print("param size = %fMB", count_parameters_in_MB(model))
+    print(f"param size = {count_parameters_in_MB(model)}MB")
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
@@ -151,7 +151,7 @@ def train(train_queue, model, criterion, optimizer):
         top5.update(prec5.data, n)
 
         if step % args.report_freq == 0:
-            logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+            print('train %03d %e %f %f', step, objs.avg.item(), top1.avg.item(), top5.avg.item())
 
     return top1.avg, objs.avg
 
@@ -177,7 +177,7 @@ def infer(valid_queue, model, criterion):
             top5.update(prec5.data, n)
 
             if step % args.report_freq == 0:
-                logging.info('valid %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+                print('valid %03d %e %f %f', step, objs.avg.item(), top1.avg.item(), top5.avg.item())
 
         return top1.avg, objs.avg
 
