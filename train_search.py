@@ -103,7 +103,7 @@ def main():
 
     architect = Architect(model, args)
 
-    for epoch in range(epoch_old, args.epochs):
+    for epoch in range(epoch_old+1, args.epochs):
         lr = scheduler.get_last_lr()[0]
         writer.add_scalar('learning rate', lr, epoch)
         print('epoch: ', str(epoch), ', lr: ', str(lr))
