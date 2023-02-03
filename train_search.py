@@ -21,46 +21,32 @@ from utils import _data_transforms_cifar10
 from architect import *
 
 
-# args.save = 'search-{}-{}'.format(args.saved_path, time.strftime("%Y%m%d-%H%M%S"))
-# create_exp_dir(args.saved_path, scripts_to_save=glob.glob('*.py'))
+parser = argparse.ArgumentParser("cifar")
+parser.add_argument('--path', type=str)
+parser.add_argument('--batch_size', type=int, default=64, help='batch size')
+parser.add_argument('--learning_rate', type=float, default=0.025, help='init learning rate')
+parser.add_argument('--learning_rate_min', type=float, default=0.001, help='min learning rate')
+parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+parser.add_argument('--weight_decay', type=float, default=3e-4, help='weight decay')
+parser.add_argument('--report_freq', type=float, default=50, help='report frequency')
+parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
+parser.add_argument('--epochs', type=int, default=50, help='num of training epochs')
+parser.add_argument('--init_channels', type=int, default=16, help='num of init channels')
+parser.add_argument('--layers', type=int, default=8, help='total number of layers')
+parser.add_argument('--cutout', action='store_true', default=False, help='use cutout')
+parser.add_argument('--cutout_length', type=int, default=16, help='cutout length')
+parser.add_argument('--drop_path_prob', type=float, default=0.3, help='drop path probability')
+parser.add_argument('--seed', type=int, default=2, help='random seed')
+parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
+parser.add_argument('--train_portion', type=float, default=0.5, help='portion of training data')
+parser.add_argument('--unrolled', action='store_true', default=False, help='use one-step unrolled validation loss')
+parser.add_argument('--arch_learning_rate', type=float, default=3e-4, help='learning rate for arch encoding')
+parser.add_argument('--arch_weight_decay', type=float, default=1e-3, help='weight decay for arch encoding')
+args = parser.parse_args()
 
-args = configparser.ConfigParser()
-log_format = '%(asctime)s %(message)s'
-logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=log_format, datefmt='%m/%d %I:%M:%S %p')
-fh = logging.FileHandler(os.path.join(args.saved_path, 'log.txt'))
-fh.setFormatter(logging.Formatter(log_format))
-logging.getLogger().addHandler(fh)
-
-PATH = ''
-args.data_dir = os.path.join(PATH, "DART")
-args.saved_model = os.path.join(PATH, "DART")
-args.saved_path = os.path.join(PATH, "DART")
-os.makedirs(args.data_dir, exist_ok=True)
-
-args.data = '../data'  # 'location of the data corpus'
-args.batch_size = 64  # 'batch size'
-args.learning_rate = 0.025  # 'init learning rate'
-args.learning_rate_min = 0.001  # 'min learning rate'
-args.momentum = 0.9  # 'momentum'
-args.weight_decay = 3e-4  # 'weight decay'
-args.report_freq = 50  # 'report frequency'
-args.gpu = 0  # 'gpu device id'
-args.epochs = 50  # 'num of training epochs'
-args.init_channels = 16  # 'num of init channels'
-args.layers = 8  # 'total number of layers'
-args.model_path = 'saved_models'  # 'path to save the model'
-args.cutout = False  # 'use cutout'
-args.cutout_length = 16  # 'cutout length'
-args.drop_path_prob = 0.3  # 'drop path probability'
-args.save = PATH + 'EXP'  # 'experiment name'
-os.makedirs(args.save, exist_ok=True)
-args.seed = 2  # 'random seed'
-args.grad_clip = 5  # 'gradient clipping'
-args.train_portion = 0.5  # 'portion of training data'
-args.unrolled = False  # 'use one-step unrolled validation loss'
-args.arch_learning_rate = 3e-4  # 'learning rate for arch encoding'
-args.arch_weight_decay = 1e-3  # 'weight decay for arch encoding'
-
+PATH = args.path
+model_path = os.path.join(PATH, 'checkpoint')
+args.data_dir = os.path.join(PATH, 'data')
 CIFAR_CLASSES = 10
 
 writer = SummaryWriter(os.path.join(PATH, 'runs/DARTS'))
@@ -93,12 +79,12 @@ def main():
         optimizer, float(args.epochs), eta_min=args.learning_rate_min
     )
     try:
-        checkpoint = torch.load(os.path.join(args.saved_model, 'weights.pt'))
+        checkpoint = torch.load(os.path.join(model_path, 'weights.pt'))
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         epoch_old = checkpoint['epoch']
-        print('Load previous model at : ', args.saved_model)
+        print('Load previous model at : ', model_path)
     except:
         epoch_old = 0
         print('Training new model!')
@@ -125,7 +111,7 @@ def main():
 
     for epoch in range(epoch_old, args.epochs):
         lr = scheduler.get_last_lr()[0]
-        writer.add_scalar('learning rate', lr)
+        writer.add_scalar('learning rate', lr, epoch)
         print('epoch: ', str(epoch), ', lr: ', str(lr))
 
         genotype = model.genotype()
@@ -154,7 +140,7 @@ def main():
         writer.add_scalar('valid accuracy', valid_acc.item(), epoch)
         writer.add_scalar('valid loss', valid_obj.item(), epoch)
         writer.add_scalar('valid time', end_valid - start_valid, epoch)
-        save(model, epoch, optimizer, scheduler, os.path.join(args.saved_model, 'weights.pt'))
+        save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights.pt'))
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
