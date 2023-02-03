@@ -40,6 +40,8 @@ args = parser.parse_args()
 PATH = args.path
 model_path = os.path.join(PATH, 'checkpoint')
 args.data_dir = os.path.join(PATH, 'data')
+os.makedirs(model_path, exist_ok=True)
+os.makedirs(args.data_dir, exist_ok=True)
 CIFAR_CLASSES = 10
 
 writer = SummaryWriter(os.path.join(PATH, 'runs/darts_search'))
@@ -56,7 +58,6 @@ def main():
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
     print('gpu device = ', args.gpu)
-    # print("args = ", args)
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()

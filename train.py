@@ -12,6 +12,7 @@ from torch.autograd import Variable
 import os
 from torch.utils.tensorboard import SummaryWriter
 from time import time
+import genotypes
 
 
 parser = argparse.ArgumentParser("cifar")
@@ -39,6 +40,8 @@ args = parser.parse_args()
 PATH = args.path
 model_path = os.path.join(PATH, 'checkpoint')
 args.data_dir = os.path.join(PATH, 'data')
+os.makedirs(model_path, exist_ok=True)
+os.makedirs(args.data_dir, exist_ok=True)
 CIFAR_CLASSES = 10
 
 writer = SummaryWriter(os.path.join(PATH, 'runs/darts'))
@@ -46,7 +49,7 @@ writer = SummaryWriter(os.path.join(PATH, 'runs/darts'))
 
 def main():
     if not torch.cuda.is_available():
-        logging.info('no gpu device available')
+        print('no gpu device available')
         sys.exit(1)
 
     np.random.seed(args.seed)
@@ -55,14 +58,13 @@ def main():
     torch.manual_seed(args.seed)
     cudnn.enabled = True
     torch.cuda.manual_seed(args.seed)
-    logging.info('gpu device = %d' % args.gpu)
-    logging.info("args = %s", args)
+    print('gpu device = %d' % args.gpu)
 
     genotype = eval('genotypes.%s' % args.arch)
     model = NetworkCIFAR(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
     model = model.cuda()
 
-    logging.info("param size = %fMB", count_parameters_in_MB(model))
+    print("param size = %fMB", count_parameters_in_MB(model))
 
     criterion = nn.CrossEntropyLoss()
     criterion = criterion.cuda()
@@ -74,8 +76,8 @@ def main():
     )
 
     train_transform, valid_transform = _data_transforms_cifar10(args)
-    train_data = dset.CIFAR10(root=args.data, train=True, download=True, transform=train_transform)
-    valid_data = dset.CIFAR10(root=args.data, train=False, download=True, transform=valid_transform)
+    train_data = dset.CIFAR10(root=args.data_dir, train=True, download=True, transform=train_transform)
+    valid_data = dset.CIFAR10(root=args.data_dir, train=False, download=True, transform=valid_transform)
 
     train_queue = torch.utils.data.DataLoader(
         train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True)
@@ -97,7 +99,7 @@ def main():
         print('Training new model!')
 
     for epoch in range(epoch_old, args.epochs):
-        print('epoch %d: lr %e', epoch, scheduler.get_last_lr()[0])
+        print(f'epoch {epoch}: lr {scheduler.get_last_lr()[0]}')
         model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
         # training
