@@ -73,7 +73,7 @@ def main():
         optimizer, float(args.epochs), eta_min=args.learning_rate_min
     )
     try:
-        checkpoint = torch.load(os.path.join(model_path, 'weights.pt'))
+        checkpoint = torch.load(os.path.join(model_path, 'weights_search.pt'))
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler'])
@@ -103,6 +103,7 @@ def main():
 
     architect = Architect(model, args)
 
+    best_valid_acc = 0
     for epoch in range(epoch_old+1, args.epochs):
         lr = scheduler.get_last_lr()[0]
         writer.add_scalar('learning rate', lr, epoch)
@@ -129,6 +130,13 @@ def main():
         valid_acc, valid_obj = infer(valid_queue, model, criterion)
         scheduler.step()
         end_valid = time()
+        if valid_acc.item() > best_valid_acc:
+            best_valid_acc = valid_acc.item()
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'epoch': epoch,
+                'valid_acc': valid_acc.item()
+            }, os.path.join(model_path, 'best_model_search.pt'))
 
         print(f'valid_acc: {valid_acc.item()}%, valid_time: {end_valid - start_valid}s')
         writer.add_scalar('valid accuracy', valid_acc.item(), epoch)

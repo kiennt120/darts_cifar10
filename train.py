@@ -33,7 +33,7 @@ parser.add_argument('--cutout_length', type=int, default=16, help='cutout length
 parser.add_argument('--drop_path_prob', type=float, default=0.2, help='drop path probability')
 parser.add_argument('--save', type=str, default='EXP', help='experiment name')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
-parser.add_argument('--arch', type=genotypes.Genotype, default=genotypes.DARTS, help='which architecture to use')
+parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5, help='gradient clipping')
 args = parser.parse_args()
 
@@ -60,7 +60,7 @@ def main():
     torch.cuda.manual_seed(args.seed)
     print('gpu device =', args.gpu)
 
-    genotype = args.arch
+    genotype = eval(f'genotypes.{args.arch}')
     model = NetworkCIFAR(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
     model = model.cuda()
 
@@ -98,6 +98,7 @@ def main():
         epoch_old = 0
         print('Training new model!')
 
+    best_valid_acc = 0
     for epoch in range(epoch_old+1, args.epochs):
         lr = scheduler.get_last_lr()[0]
         print(f'epoch {epoch}: lr {lr}')
@@ -121,6 +122,13 @@ def main():
         writer.add_scalar('valid accuracy', valid_acc.item(), epoch)
         writer.add_scalar('valid loss', valid_obj.item(), epoch)
         writer.add_scalar('valid time', end_valid - start_valid, epoch)
+        if valid_acc.item() > best_valid_acc:
+            best_valid_acc = valid_acc.item()
+            torch.save({
+                'model_state_dict': model.state_dict(),
+                'epoch': epoch,
+                'valid_acc': valid_acc.item()
+            }, os.path.join(model_path, 'best_model.pt'))
 
         scheduler.step()
         save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights.pt'))
