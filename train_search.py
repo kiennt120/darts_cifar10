@@ -80,7 +80,7 @@ def main():
         epoch_old = checkpoint['epoch']
         print('Load previous model at : ', model_path)
     except:
-        epoch_old = 0
+        epoch_old = -1
         print('Training new model!')
     print(f"param size = {count_parameters_in_MB(model)}MB")
 

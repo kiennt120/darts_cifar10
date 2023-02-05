@@ -95,7 +95,7 @@ def main():
         epoch_old = checkpoint['epoch']
         print('Load previous model at : ', model_path)
     except:
-        epoch_old = 0
+        epoch_old = -1
         print('Training new model!')
 
     best_valid_acc = 0
