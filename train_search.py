@@ -117,32 +117,34 @@ def main():
 
         # training
         start_train = time()
-        train_acc, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr)
+        train_acc1, train_acc5, train_obj = train(train_queue, valid_queue, model, architect, criterion, optimizer, lr)
         end_train = time()
 
-        print(f'train_acc: {train_acc.item()}%, train_time: {end_train - start_train}s')
-        writer.add_scalar('train accuracy', train_acc.item(), epoch)
+        print(f'train_acc: {train_acc1.item()}%, train_time: {end_train - start_train}s')
+        writer.add_scalar('train accuracy top 1', train_acc1.item(), epoch)
+        writer.add_scalar('train accuracy top 5', train_acc5.item(), epoch)
         writer.add_scalar('train loss', train_obj.item(), epoch)
         writer.add_scalar('train time', end_train - start_train, epoch)
 
         # validation
         start_valid = time()
-        valid_acc, valid_obj = infer(valid_queue, model, criterion)
+        valid_acc1, valid_acc5, valid_obj = infer(valid_queue, model, criterion)
         scheduler.step()
         end_valid = time()
-        if valid_acc.item() > best_valid_acc:
-            best_valid_acc = valid_acc.item()
-            torch.save({
-                'model_state_dict': model.state_dict(),
-                'epoch': epoch,
-                'valid_acc': valid_acc.item()
-            }, os.path.join(model_path, 'best_model_search.pt'))
+        # if valid_acc1.item() > best_valid_acc:
+        #     best_valid_acc = valid_acc1.item()
+        #     torch.save({
+        #         'model_state_dict': model.state_dict(),
+        #         'epoch': epoch,
+        #         'valid_acc': valid_acc1.item()
+        #     }, os.path.join(model_path, 'best_model_search.pt'))
 
-        print(f'valid_acc: {valid_acc.item()}%, valid_time: {end_valid - start_valid}s')
-        writer.add_scalar('valid accuracy', valid_acc.item(), epoch)
+        print(f'valid_acc: {valid_acc1.item()}%, valid_time: {end_valid - start_valid}s')
+        writer.add_scalar('valid accuracy top 1', valid_acc1.item(), epoch)
+        writer.add_scalar('valid accuracy top 5', valid_acc5.item(), epoch)
         writer.add_scalar('valid loss', valid_obj.item(), epoch)
         writer.add_scalar('valid time', end_valid - start_valid, epoch)
-        save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights_search.pt'))
+        # save(model, epoch, optimizer, scheduler, os.path.join(model_path, 'weights_search.pt'))
 
 
 def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
@@ -180,7 +182,7 @@ def train(train_queue, valid_queue, model, architect, criterion, optimizer, lr):
         if step % args.report_freq == 0:
             print(f'train {step}: loss = {objs.avg.item()}, top 1 = {top1.avg.item()}%, top 5 = {top5.avg.item()}%')
 
-    return top1.avg, objs.avg
+    return top1.avg, top5.avg, objs.avg
 
 
 def infer(valid_queue, model, criterion):
@@ -206,7 +208,7 @@ def infer(valid_queue, model, criterion):
             if step % args.report_freq == 0:
                 print(f'valid {step}: loss = {objs.avg.item()}, top 1 = {top1.avg.item()}%, top 5 = {top5.avg.item()}%')
 
-    return top1.avg, objs.avg
+    return top1.avg, top5.avg, objs.avg
 
 
 if __name__ == '__main__':
