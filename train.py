@@ -85,7 +85,7 @@ def main():
     valid_queue = torch.utils.data.DataLoader(
         valid_data, batch_size=args.batch_size, shuffle=False, pin_memory=True)
 
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(args.epochs))
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, float(600))
 
     try:
         checkpoint = torch.load(os.path.join(model_path, 'weights.pt'))
